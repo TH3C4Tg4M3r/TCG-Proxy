@@ -55,15 +55,9 @@ app.get("/proxy", async (req, res) => {
     let html = await response.text();
     const $ = cheerio.load(html, { decodeEntities: false });
 
-    // Rewrite all links, scripts, images, and CSS links
-    $("a, img, script, link, iframe").each((_, el) => {
-      const tag = el.name;
-      let attr;
-
-      if (tag === "a" || tag === "link") attr = "href";
-      else if (tag === "img" || tag === "script" || tag === "iframe") attr = "src";
-      else return;
-
+    // Only rewrite CSS links and images
+    $("link[rel='stylesheet'], img").each((_, el) => {
+      const attr = el.name === "link" ? "href" : "src";
       const val = $(el).attr(attr);
       if (!val) return;
 
@@ -73,20 +67,15 @@ app.get("/proxy", async (req, res) => {
       } catch {}
     });
 
-    // Rewrite inline styles with url(...)
-    $("*").each((_, el) => {
-      const style = $(el).attr("style");
-      if (style && style.includes("url(")) {
-        const newStyle = style.replace(/url\((['"]?)(.*?)\1\)/g, (match, quote, path) => {
-          try {
-            const abs = new URL(path, base).href;
-            return `url(${quote}/proxy?url=${encodeURIComponent(abs)}${quote})`;
-          } catch {
-            return match;
-          }
-        });
-        $(el).attr("style", newStyle);
-      }
+    // Rewrite <a> links to go through proxy
+    $("a").each((_, el) => {
+      const val = $(el).attr("href");
+      if (!val) return;
+
+      try {
+        const abs = new URL(val, base).href;
+        $(el).attr("href", `/proxy?url=${encodeURIComponent(abs)}`);
+      } catch {}
     });
 
     res.send($.html());
