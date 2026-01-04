@@ -73,43 +73,32 @@ app.get("/proxy", async (req, res) => {
     });
 
     // Rewrite inline styles (background images)
-    $("*").each((_, el) => {
-      const style = $(el).attr("style");
-      if (style && style.includes("url(")) {
-        const newStyle = style.replace(/url\\((['"]?)(.*?)\\1\\)/g, (match, quote, path) => {
-          try {
-            const abs = new URL(path, base).href;
-            return \`url(\${quote}/proxy?url=\${encodeURIComponent(abs)}\${quote})\`;
-          } catch {
-            return match;
-          }
-        });
-        $(el).attr("style", newStyle);
+$("*").each((_, el) => {
+  const style = $(el).attr("style");
+  if (style && style.includes("url(")) {
+    const newStyle = style.replace(/url\((['"]?)(.*?)\1\)/g, (match, quote, path) => {
+      try {
+        const abs = new URL(path, base).href;
+        return `url(${quote}/proxy?url=${encodeURIComponent(abs)}${quote})`;
+      } catch {
+        return match;
       }
     });
-
-    // Rewrite <style> blocks
-    $("style").each((_, el) => {
-      const content = $(el).html();
-      if (!content) return;
-      const newContent = content.replace(/url\\((['"]?)(.*?)\\1\\)/g, (match, quote, path) => {
-        try {
-          const abs = new URL(path, base).href;
-          return \`url(\${quote}/proxy?url=\${encodeURIComponent(abs)}\${quote})\`;
-        } catch {
-          return match;
-        }
-      });
-      $(el).html(newContent);
-    });
-
-    res.send($.html());
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Proxy error");
+    $(el).attr("style", newStyle);
   }
 });
 
-app.listen(PORT, () => {
-  console.log(\`Running on port \${PORT}\`);
+// Rewrite <style> blocks
+$("style").each((_, el) => {
+  const content = $(el).html();
+  if (!content) return;
+  const newContent = content.replace(/url\((['"]?)(.*?)\1\)/g, (match, quote, path) => {
+    try {
+      const abs = new URL(path, base).href;
+      return `url(${quote}/proxy?url=${encodeURIComponent(abs)}${quote})`;
+    } catch {
+      return match;
+    }
+  });
+  $(el).html(newContent);
 });
