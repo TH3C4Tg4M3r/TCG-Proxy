@@ -6,7 +6,7 @@ import { URL } from "url";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Simple homepage with URL input
+// Homepage with smart URL input
 app.get("/", (req, res) => {
   res.send(`
     <html>
@@ -20,15 +20,26 @@ app.get("/", (req, res) => {
       </head>
       <body>
         <h1>Enter a website to visit:</h1>
-        <form action="/proxy" method="get">
-          <input name="url" placeholder="https://example.com" required/>
+        <form id="proxyForm" action="/proxy" method="get">
+          <input id="urlInput" name="url" placeholder="https://example.com" required/>
           <button type="submit">Go</button>
         </form>
+
+        <script>
+          const form = document.getElementById("proxyForm");
+          const input = document.getElementById("urlInput");
+
+          form.addEventListener("submit", function(e) {
+            let val = input.value.trim();
+            if (!val.startsWith("http://") && !val.startsWith("https://")) {
+              input.value = "https://" + val;
+            }
+          });
+        </script>
       </body>
     </html>
   `);
 });
-
 
 app.get("/proxy", async (req, res) => {
   try {
