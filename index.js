@@ -42,14 +42,16 @@ app.get("/proxy", async (req, res) => {
     });
 
     let html = await response.text();
-    const $ = cheerio.load(html);
+    const $ = cheerio.load(html, { decodeEntities: false });
 
-    $("a, img, script, link").each((_, el) => {
-      const attr =
-        el.name === "a" ? "href" :
-        el.name === "img" ? "src" :
-        el.name === "script" ? "src" :
-        "href";
+    // Rewrite all links, scripts, images, and CSS links
+    $("a, img, script, link, iframe").each((_, el) => {
+      const tag = el.name;
+      let attr;
+
+      if (tag === "a" || tag === "link") attr = "href";
+      else if (tag === "img" || tag === "script" || tag === "iframe") attr = "src";
+      else return;
 
       const val = $(el).attr(attr);
       if (!val) return;
@@ -60,12 +62,25 @@ app.get("/proxy", async (req, res) => {
       } catch {}
     });
 
+    // Rewrite inline styles with url(...)
+    $("*").each((_, el) => {
+      const style = $(el).attr("style");
+      if (style && style.includes("url(")) {
+        const newStyle = style.replace(/url\((['"]?)(.*?)\1\)/g, (match, quote, path) => {
+          try {
+            const abs = new URL(path, base).href;
+            return `url(${quote}/proxy?url=${encodeURIComponent(abs)}${quote})`;
+          } catch {
+            return match;
+          }
+        });
+        $(el).attr("style", newStyle);
+      }
+    });
+
     res.send($.html());
-  } catch {
+  } catch (e) {
+    console.log(e);
     res.status(500).send("Proxy error");
   }
-});
-
-app.listen(PORT, () => {
-  console.log("Running on port " + PORT);
 });
