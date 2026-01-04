@@ -6,6 +6,30 @@ import { URL } from "url";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Simple homepage with URL input
+app.get("/", (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Web Proxy</title>
+        <style>
+          body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+          input { width: 300px; padding: 8px; font-size: 16px; }
+          button { padding: 8px 16px; font-size: 16px; }
+        </style>
+      </head>
+      <body>
+        <h1>Enter a website to visit:</h1>
+        <form action="/proxy" method="get">
+          <input name="url" placeholder="https://example.com" required/>
+          <button type="submit">Go</button>
+        </form>
+      </body>
+    </html>
+  `);
+});
+
+
 app.get("/proxy", async (req, res) => {
   try {
     const target = req.query.url;
