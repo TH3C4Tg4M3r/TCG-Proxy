@@ -51,23 +51,56 @@ app.get("/proxy", async (req, res) => {
     const html = await response.text();
     const $ = cheerio.load(html, { decodeEntities: false });
 
-    // Rewrite links and images
+    // Rewrite <a> links
     $("a").each((_, el) => {
       const val = $(el).attr("href");
       if (!val) return;
       try { $(el).attr("href", `/proxy?url=${encodeURIComponent(new URL(val, base).href)}`); } catch {}
     });
 
+    // Rewrite <img> sources
     $("img").each((_, el) => {
       const val = $(el).attr("src");
       if (!val) return;
       try { $(el).attr("src", `/proxy?url=${encodeURIComponent(new URL(val, base).href)}`); } catch {}
     });
 
+    // Rewrite CSS files
     $("link[rel='stylesheet']").each((_, el) => {
       const val = $(el).attr("href");
       if (!val) return;
       try { $(el).attr("href", `/proxy?url=${encodeURIComponent(new URL(val, base).href)}`); } catch {}
+    });
+
+    // Rewrite inline styles (background images)
+    $("*").each((_, el) => {
+      const style = $(el).attr("style");
+      if (style && style.includes("url(")) {
+        const newStyle = style.replace(/url\\((['"]?)(.*?)\\1\\)/g, (match, quote, path) => {
+          try {
+            const abs = new URL(path, base).href;
+            return \`url(\${quote}/proxy?url=\${encodeURIComponent(abs)}\${quote})\`;
+          } catch {
+            return match;
+          }
+        });
+        $(el).attr("style", newStyle);
+      }
+    });
+
+    // Rewrite <style> blocks
+    $("style").each((_, el) => {
+      const content = $(el).html();
+      if (!content) return;
+      const newContent = content.replace(/url\\((['"]?)(.*?)\\1\\)/g, (match, quote, path) => {
+        try {
+          const abs = new URL(path, base).href;
+          return \`url(\${quote}/proxy?url=\${encodeURIComponent(abs)}\${quote})\`;
+        } catch {
+          return match;
+        }
+      });
+      $(el).html(newContent);
     });
 
     res.send($.html());
@@ -78,5 +111,5 @@ app.get("/proxy", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Running on port ${PORT}`);
+  console.log(\`Running on port \${PORT}\`);
 });
